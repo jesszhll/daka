@@ -139,6 +139,10 @@ export default function App() {
   const [newShopCoins, setNewShopCoins] = useState(30);
   const [newShopEmoji, setNewShopEmoji] = useState('🍓');
 
+  // Backup / Data Migration state
+  const [importText, setImportText] = useState('');
+  const [showBackupPanel, setShowBackupPanel] = useState(false);
+
   // Interactive Mascots bubbles and reaction triggers
   const [mascotBubble, setMascotBubble] = useState<string>('');
 
@@ -148,6 +152,75 @@ export default function App() {
 
   // Active Partner Info
   const partner = MASCOTS[currentPartnerIndex];
+
+  // --- DATA EXPORT / IMPORT HANDLERS ---
+  const handleExportData = () => {
+    const backupData = {
+      tasks,
+      shopItems,
+      coins,
+      history,
+      celebratedDates,
+      currentPartnerIndex,
+      purchaseHistory
+    };
+    const jsonStr = JSON.stringify(backupData);
+    
+    // Set text to input so users can copy easily anyway
+    setImportText(jsonStr);
+
+    // Try standard clipboard API
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(jsonStr)
+        .then(() => {
+          showToast('数据已成功生成并复制到剪贴板！可以直接去新网址粘贴导入哦！✨', 'success', '📦');
+        })
+        .catch(() => {
+          showToast('已将备份数据生成在下方文本框中，请手动选择复制！', 'info', '📋');
+        });
+    } else {
+      showToast('已将备份数据生成在下方文本框中，请手动选择复制！', 'info', '📋');
+    }
+  };
+
+  const handleImportData = () => {
+    if (!importText.trim()) {
+      showToast('请先贴入备份的数据文本哦！', 'error', '⚠️');
+      return;
+    }
+    try {
+      const parsed = JSON.parse(importText.trim());
+      
+      // Basic validations
+      if (parsed.tasks && Array.isArray(parsed.tasks)) {
+        setTasks(parsed.tasks);
+      }
+      if (parsed.shopItems && Array.isArray(parsed.shopItems)) {
+        setShopItems(parsed.shopItems);
+      }
+      if (typeof parsed.coins === 'number') {
+        setCoins(parsed.coins);
+      }
+      if (parsed.history && typeof parsed.history === 'object') {
+        setHistory(parsed.history);
+      }
+      if (parsed.celebratedDates && Array.isArray(parsed.celebratedDates)) {
+        setCelebratedDates(parsed.celebratedDates);
+      }
+      if (typeof parsed.currentPartnerIndex === 'number' && parsed.currentPartnerIndex >= 0 && parsed.currentPartnerIndex < MASCOTS.length) {
+        setCurrentPartnerIndex(parsed.currentPartnerIndex);
+      }
+      if (parsed.purchaseHistory && Array.isArray(parsed.purchaseHistory)) {
+        setPurchaseHistory(parsed.purchaseHistory);
+      }
+      
+      showToast('数据同步导入成功！打卡记录与商品已全部恢复！🎉', 'success', '🦕');
+      setImportText('');
+      setShowBackupPanel(false);
+    } catch (err) {
+      showToast('导入数据格式不正确，请确保完整复制了导出的文本！', 'error', '❌');
+    }
+  };
 
   // --- PERSISTENCE ---
   useEffect(() => {
@@ -1224,6 +1297,88 @@ export default function App() {
           </div>
         </div>
       </main>
+
+      {/* --- DATA MIGRATION & BACKUP SECTION --- */}
+      <section className="max-w-4xl mx-auto px-4 mt-8">
+        <div className="manga-card bg-[#FDFBF7] rounded-[2rem] p-5">
+          <div 
+            id="trigger-backup-toggle"
+            onClick={() => setShowBackupPanel(!showBackupPanel)}
+            className="flex items-center justify-between cursor-pointer"
+          >
+            <div className="flex items-center gap-2 font-extrabold text-[#333] text-sm md:text-base">
+              <span>🚚</span>
+              <span>GitHub / Vercel 部署数据迁移与备份</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
+              <span>{showBackupPanel ? '收起' : '展开迁移工具'}</span>
+              <span className="text-[10px]">{showBackupPanel ? '▲' : '▼'}</span>
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {showBackupPanel && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden mt-4 pt-4 border-t-[2px] border-dashed border-gray-300"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Column: Export */}
+                  <div className="bg-white border-[2.5px] border-[#333] rounded-2xl p-4 shadow-[3px_3px_0px_#333]">
+                    <h4 className="font-extrabold text-sm text-[#333] mb-1 flex items-center gap-1">
+                      <span>📤 导出本地数据</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      第一步：在此处点击生成并复制你在此平台中已添加的习惯、商品和金币数据。
+                    </p>
+                    <button
+                      id="btn-export-all-data"
+                      onClick={handleExportData}
+                      className="manga-btn w-full bg-[#D2E9FF] hover:bg-[#B4DBFF] text-gray-800 font-extrabold py-2 px-3 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span>📦 复制一键备份代码</span>
+                    </button>
+                  </div>
+
+                  {/* Right Column: Import */}
+                  <div className="bg-white border-[2.5px] border-[#333] rounded-2xl p-4 shadow-[3px_3px_0px_#333]">
+                    <h4 className="font-extrabold text-sm text-[#333] mb-1 flex items-center gap-1">
+                      <span>📥 导入/同步数据</span>
+                    </h4>
+                    <p className="text-[11px] text-gray-500 mb-3">
+                      第二步：在新部署的 Vercel 网站中，展开此工具，将备份代码粘贴在下方并导入。
+                    </p>
+                    <button
+                      id="btn-import-all-data"
+                      onClick={handleImportData}
+                      className="manga-btn w-full bg-[#E2F0D9] hover:bg-[#C9E7BD] text-gray-800 font-extrabold py-2 px-3 rounded-xl text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <span>✨ 确认同步并导入数据</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Shared Textarea */}
+                <div className="mt-4">
+                  <label className="block text-xs font-bold text-gray-600 mb-1">
+                    备份数据文本框 (导出后会自动填入，导入时请把代码贴到这里)：
+                  </label>
+                  <textarea
+                    id="textarea-backup-io"
+                    rows={4}
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                    placeholder='{"tasks":..., "coins":...}'
+                    className="w-full border-[3px] border-[#333] rounded-xl p-3 bg-white text-xs font-mono outline-none focus:bg-pink-50/10 placeholder-gray-300"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </section>
 
       {/* --- CUTE FOOTER CREDITS --- */}
       <footer className="max-w-4xl mx-auto px-4 mt-12 mb-6 text-center text-xs text-gray-500 font-bold flex flex-col items-center gap-1">
