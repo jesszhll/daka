@@ -1,0 +1,6 @@
+{
+  "name": "Dino Habit Tracker",
+  "description": "A cute, Chikawa/Dinosaur-style habit tracker featuring daily checklist, reward shop, calendar history, custom task editing, and cartoon-themed visual elements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
